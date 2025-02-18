@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Projectile Motion Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        
+        .info-panel {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Projectile Motion</h1>
+        <canvas id="simulationCanvas" width="800" height="400"></canvas>
+        
+        <div class="controls">
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="showPosition"> Show Position Vectors
+                </label>
+                <label>
+                    <input type="checkbox" id="showVelocity" checked> Show Velocity Vector
+                </label>
+                <label>
+                    <input type="checkbox" id="showComponents" checked> Show Velocity Vector Components
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <button id="fireBtn">Fire</button>
+                <button id="pauseBtn">⏸</button>
+                <button id="resumeBtn">Resume</button>
+                <button id="resetBtn">Reset</button>
+            </div>
+            
+            <div class="slider-container">
+                <label for="initialVelocity">Initial Velocity (m/s):</label>
+                <input type="range" id="initialVelocity" min="0" max="50" value="25" step="0.1">
+                <span id="velocityValue">25</span>
+            </div>
+            
+            <div class="slider-container">
+                <label for="launchAngle">Launch Angle (°):</label>
+                <input type="range" id="launchAngle" min="0" max="90" value="45" step="1">
+                <span id="angleValue">45</span>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div id="velocityInfo"></div>
+            <div id="positionInfo"></div>
+            <div id="timeInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let simulation = {
+            time: 0,
+            x: 0,
+            y: 0,
+            v0: 25,
+            angle: 45,
+            g: 9.8,
+            isRunning: false,
+            showPosition: false,
+            showVelocity: true,
+            showComponents: true
+        };
+
+        function calculateComponents() {
+            const angleRad = simulation.angle * Math.PI / 180;
+            return {
+                vx: simulation.v0 * Math.cos(angleRad),
+                vy: simulation.v0 * Math.sin(angleRad) - simulation.g * simulation.time
+            };
+        }
+
+        function updatePosition() {
+            const angleRad = simulation.angle * Math.PI / 180;
+            simulation.x = simulation.v0 * Math.cos(angleRad) * simulation.time;
+            simulation.y = simulation.v0 * Math.sin(angleRad) * simulation.time - 
+                         0.5 * simulation.g * simulation.time * simulation.time;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set up coordinate system
+            ctx.save();
+            ctx.translate(50, canvas.height - 50);
+            ctx.scale(1, -1);
+            
+            // Draw axes
+            ctx.beginPath();
+            ctx.strokeStyle = '#000';
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(canvas.width - 100, 0);
+            ctx.moveTo(0, -10);
+            ctx.lineTo(0, canvas.height - 100);
+            ctx.stroke();
+            
+            // Draw projectile
+            const scale = 5;
+            ctx.beginPath();
+            ctx.fillStyle = 'red';
+            ctx.arc(simulation.x * scale, simulation.y * scale, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if (simulation.showVelocity || simulation.showComponents) {
+                const components = calculateComponents();
+                const scale = 2;
+                
+                if (simulation.showComponents) {
+                    // Draw x component
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'blue';
+                    ctx.moveTo(simulation.x * scale, simulation.y * scale);
+                    ctx.lineTo((simulation.x + components.vx) * scale, simulation.y * scale);
+                    ctx.stroke();
+                    
+                    // Draw y component
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'blue';
+                    ctx.moveTo(simulation.x * scale, simulation.y * scale);
+                    ctx.lineTo(simulation.x * scale, (simulation.y + components.vy) * scale);
+                    ctx.stroke();
+                }
+                
+                if (simulation.showVelocity) {
+                    // Draw velocity vector
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'purple';
+                    ctx.moveTo(simulation.x * scale, simulation.y * scale);
+                    ctx.lineTo(
+                        (simulation.x + components.vx) * scale,
+                        (simulation.y + components.vy) * scale
+                    );
+                    ctx.stroke();
+                }
+            }
+            
+            ctx.restore();
+            
+            // Update info panel
+            const components = calculateComponents();
+            document.getElementById('velocityInfo').textContent = 
+                `Velocity: vx = ${components.vx.toFixed(2)} m/s, vy = ${components.vy.toFixed(2)} m/s`;
+            document.getElementById('positionInfo').textContent = 
+                `Position: x = ${simulation.x.toFixed(2)} m, y = ${simulation.y.toFixed(2)} m`;
+            document.getElementById('timeInfo').textContent = 
+                `Time: ${simulation.time.toFixed(2)} s`;
+        }
+
+        function animate() {
+            if (simulation.isRunning) {
+                simulation.time += 0.02;
+                updatePosition();
+                
+                if (simulation.y < 0) {
+                    simulation.isRunning = false;
+                }
+                
+                draw();
+                requestAnimationFrame(animate);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('fireBtn').addEventListener('click', () => {
+            simulation.time = 0;
+            simulation.x = 0;
+            simulation.y = 0;
+            simulation.isRunning = true;
+            animate();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            simulation.isRunning = false;
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+            if (!simulation.isRunning && simulation.y >= 0) {
+                simulation.isRunning = true;
+                animate();
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            simulation.time = 0;
+            simulation.x = 0;
+            simulation.y = 0;
+            simulation.isRunning = false;
+            draw();
+        });
+
+        document.getElementById('initialVelocity').addEventListener('input', (e) => {
+            simulation.v0 = parseFloat(e.target.value);
+            document.getElementById('velocityValue').textContent = simulation.v0;
+            if (!simulation.isRunning) draw();
+        });
+
+        document.getElementById('launchAngle').addEventListener('input', (e) => {
+            simulation.angle = parseFloat(e.target.value);
+            document.getElementById('angleValue').textContent = simulation.angle;
+            if (!simulation.isRunning) draw();
+        });
+
+        document.getElementById('showPosition').addEventListener('change', (e) => {
+            simulation.showPosition = e.target.checked;
+            if (!simulation.isRunning) draw();
+        });
+
+        document.getElementById('showVelocity').addEventListener('change', (e) => {
+            simulation.showVelocity = e.target.checked;
+            if (!simulation.isRunning) draw();
+        });
+
+        document.getElementById('showComponents').addEventListener('change', (e) => {
+            simulation.showComponents = e.target.checked;
+            if (!simulation.isRunning) draw();
+        });
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>
